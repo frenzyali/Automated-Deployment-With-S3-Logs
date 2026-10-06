@@ -1,0 +1,52 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Python syntax check
+        run: python -m compileall -q app-code
+      - name: hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: docker/Dockerfile
+          failure-threshold: error
+      - name: shellcheck
+        uses: ludeeus/action-shellcheck@2.0.0
+        with:
+          scandir: scripts
+          severity: warning
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -f docker/Dockerfile -t simple-webapp:ci app-code
+      - name: Smoke test
+        run: |
+          docker run -d --name app -p 9999:9999 simple-webapp:ci
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:9999/ > /dev/null && exit 0
+            sleep 2
+          done
+          docker logs app
+          exit 1
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: simple-webapp:ci
+          severity: HIGH,CRITICAL
+          exit-code: "0" # report-only; flip to "1" once findings are triaged

@@ -1,0 +1,5 @@
+# app-code/ is a third-party demo app (darumor/simple-python-website).
+# Exclude it so the language bar reflects the DevOps work in this repo
+# (Dockerfile, Jenkins pipeline, shell scripts) rather than the app.
+app-code/** linguist-vendored
+jenkins/Jenkinfile linguist-language=Groovy
